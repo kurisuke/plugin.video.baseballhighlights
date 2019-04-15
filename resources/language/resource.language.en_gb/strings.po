@@ -16,10 +16,10 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgctxt "#32001"
+msgctxt "#30001"
 msgid "General"
 msgstr ""
 
-msgctxt "#32002"
+msgctxt "#30002"
 msgid "Days to go back for last games"
 msgstr ""
