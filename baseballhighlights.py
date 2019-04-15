@@ -54,6 +54,10 @@ class Highlight:
             for playback in highlight_json["playbacks"]:
                 if playback["name"] == "mp4Avc":
                     self.url = playback["url"]
+                    break
+                elif playback["name"] == "FLASH_2500K_1280X720":
+                    self.url = playback["url"]
+                    break
         except KeyError:
             return
 
