@@ -57,10 +57,25 @@ class Highlight:
         except KeyError:
             return
 
-        self.title = highlight_json["title"]
-        self.description = highlight_json["description"]
-        self.description_short = highlight_json["blurb"]
-        self.duration = convert_duration(highlight_json["duration"])
+        try:
+            self.title = highlight_json["title"]
+        except KeyError:
+            self.title = ""
+
+        try:
+            self.description = highlight_json["description"]
+        except KeyError:
+            self.description = ""
+
+        try:
+            self.description_short = highlight_json["blurb"]
+        except KeyError:
+            self.description_short = ""
+
+        try:
+            self.duration = convert_duration(highlight_json["duration"])
+        except KeyError:
+            self.duration = 0
 
         self.fanart = get_image_url(highlight_json, FANART_SIZE)
         self.thumb = get_image_url(highlight_json, THUMB_SIZE)
