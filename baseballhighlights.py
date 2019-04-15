@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import datetime
 import dateutil.parser
+import dateutil.tz
 import json
 import urllib
 
@@ -86,6 +87,7 @@ class Game:
     def __init__(self, gameid):
         # members:
         # - gameid
+        # - datetime
         # - title
         # - title_short
         # - fanart
@@ -100,12 +102,24 @@ class Game:
         response = urllib.urlopen(game_query_url)
         data = json.loads(response.read())
         game_json = data["gameData"]
-        
+
+        try:
+            self.datetime = dateutil.parser.parse(game_json["datetime"]["dateTime"])
+            game_tz_offset = game_json["venue"]["timeZone"]["offset"]
+            game_tz_name = game_json["venue"]["timeZone"]["tz"]
+            tz = dateutil.tz.tzoffset(game_tz_name, game_tz_offset * 60)
+            self.datetime.replace(tzinfo=tz)
+            game_time_str = self.datetime.strftime("%Y-%m-%d %H:%M")
+        except KeyError:
+            self.datetime = None
+            game_time_str = ""
+
         team_names = ["{0} ({1})".format(game_json["teams"][ha]["name"], game_json["teams"][ha]["abbreviation"])
                       for ha in ("away", "home")]
-        self.title = "{0} - {1}".format(team_names[0], team_names[1])
-        self.title_short = "{0} - {1}".format(game_json["teams"]["away"]["abbreviation"],
-                                              game_json["teams"]["home"]["abbreviation"])
+        self.title = "{0} @ {1}".format(team_names[0], team_names[1])
+        self.title_time = "{0}: {1} @ {2}".format(game_time_str, team_names[0], team_names[1])
+        self.title_short = "{0}@{1}".format(game_json["teams"]["away"]["abbreviation"],
+                                            game_json["teams"]["home"]["abbreviation"])
         self.highlights = []
         self.fanart = None
         self.thumb = None
@@ -170,19 +184,20 @@ class GameDay:
     def __init__(self, date):
         self.date = date
 
-        query_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate={0}&endDate={0}&hydrate=team".format(self.date)
+        query_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate={0}&endDate={0}&gameType=R".format(
+            self.date)
         response = urllib.urlopen(query_url)
         data = json.loads(response.read())
 
         try:
             games_json = data["dates"][0]["games"]
-        except KeyError:
+        except (KeyError, IndexError), _:
             games_json = None
 
         if games_json is not None:
             self.games = [Game(game["gamePk"]) for game in games_json]
         else:
-            self.games = None
+            self.games = []
 
     def __unicode__(self):
         x = u"--- GameDay: {0}".format(self.date)
@@ -192,3 +207,63 @@ class GameDay:
 
     def __str__(self):
         return unicode(self).encode('utf-8')
+
+
+def get_season_dates(year):
+    query_url = "https://statsapi.mlb.com/api/v1/seasons?sportId=1&seasonId={0}".format(year)
+    response = urllib.urlopen(query_url)
+    data = json.loads(response.read())
+
+    try:
+        season_json = data["seasons"][0]
+        return (dateutil.parser.parse(season_json["regularSeasonStartDate"]).date(),
+                dateutil.parser.parse(season_json["regularSeasonEndDate"]).date())
+    except IndexError:
+        return None
+
+
+class Team:
+    def __init__(self, name, abbreviation, team_id):
+        self.name = name
+        self.abbreviation = abbreviation
+        self.team_id = team_id
+
+
+def get_teams():
+    query_url = "https://statsapi.mlb.com/api/v1/teams?sportId=1"
+    response = urllib.urlopen(query_url)
+    data = json.loads(response.read())
+
+    try:
+        teams_json = data["teams"]
+    except IndexError:
+        return []
+
+    teams = []
+    for team_json in teams_json:
+        teams.append(Team(team_json["name"], team_json["abbreviation"], team_json["id"]))
+    return sorted(teams, key=lambda x: x.abbreviation)
+
+
+class GamesByTeam:
+    def __init__(self, date_start, date_end, team_id):
+        query_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate={0}&endDate={1}&teamId={2}&gameType=R".format(
+            date_start, date_end, team_id)
+        response = urllib.urlopen(query_url)
+        data = json.loads(response.read())
+
+        try:
+            dates_json = data["dates"]
+        except KeyError:
+            dates_json = []
+
+        self.games = []
+        for date_json in dates_json:
+            try:
+                games_json = date_json["games"]
+            except KeyError:
+                games_json = None
+
+            if games_json is not None:
+                for game_json in games_json:
+                    self.games.append(Game(game_json["gamePk"]))
