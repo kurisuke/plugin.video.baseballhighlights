@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.baseballhighlights"
+version="0.0.1"
+name="Baseball Highlights"
+provider-name="kurisuke">
+<requires>
+  <import addon="xbmc.python" version="2.25.0"/>
+</requires>
+<extension point="xbmc.python.pluginsource" library="main.py">
+  <provides>video</provides>
+</extension>
+<extension point="xbmc.addon.metadata">
+  <summary lang="en">Baseball Highlights</summary>
+  <description lang="en_GB">Play highlights / recaps from mlb.tv</description>
+  <disclaimer lang="en_GB">Video provided by mlb.tv.</disclaimer>
+  <assets>
+    <icon>resources/icon.png</icon>
+    <fanart>resources/fanart.jpg</fanart>
+  </assets>
+  <news>First Release</news>
+</extension>
+</addon>
