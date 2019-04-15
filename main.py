@@ -197,9 +197,9 @@ def list_byteam():
     xbmcplugin.endOfDirectory(_handle)
 
 
-def get_gamesbyteam(team_id):
+def get_gamesbyteam(team_id, days_back):
     date_end = datetime.date.today()
-    date_start = datetime.date.today() - datetime.timedelta(30)
+    date_start = datetime.date.today() - datetime.timedelta(days_back)
     return baseballhighlights.GamesByTeam(date_start, date_end, team_id)
 
 
@@ -217,7 +217,7 @@ def list_gamesbyteam(team_id):
     # for this type of content.
     xbmcplugin.setContent(_handle, 'videos')
     # Get video categories
-    gamesbyteam = get_gamesbyteam(team_id)
+    gamesbyteam = get_gamesbyteam(team_id, int(xbmcplugin.getSetting(_handle, 'daysBack')))
     # Iterate through categories
     for game in gamesbyteam.games:
         game.get_content()

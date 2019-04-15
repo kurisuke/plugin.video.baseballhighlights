@@ -87,12 +87,11 @@ class Highlight:
 
         self.contentType = "H"
         try:
-            content_type_json = next(item["value"] for item in highlight_json["keywordsDisplay"]
-                                     if item["type"] == "mlbtax")
-            convert = {"condensed_game": "C", "mlb_recap": "R"}
-            if content_type_json in convert.keys():
-                self.contentType = convert[content_type_json]
-        except StopIteration:
+            if highlight_json["slug"].startswith("cg-"):
+                self.contentType = "C"
+            elif highlight_json["slug"].startswith("recap-"):
+                self.contentType = "R"
+        except KeyError:
             pass
 
     def __unicode__(self):
@@ -128,7 +127,7 @@ class Game:
             game_tz_name = game_json["venue"]["timeZone"]["tz"]
             tz = dateutil.tz.tzoffset(game_tz_name, game_tz_offset * 60)
             self.datetime.replace(tzinfo=tz)
-            game_time_str = self.datetime.strftime("%Y-%m-%d %H:%M")
+            game_time_str = self.datetime.astimezone(dateutil.tz.tzlocal()).strftime("%Y-%m-%d %H:%M")
         except KeyError:
             self.datetime = None
             game_time_str = ""
@@ -136,9 +135,10 @@ class Game:
         team_names = ["{0} ({1})".format(game_json["teams"][ha]["name"], game_json["teams"][ha]["abbreviation"])
                       for ha in ("away", "home")]
         self.title = "{0} @ {1}".format(team_names[0], team_names[1])
-        self.title_time = "{0}: {1} @ {2}".format(game_time_str, team_names[0], team_names[1])
-        self.title_short = "{0}@{1}".format(game_json["teams"]["away"]["abbreviation"],
-                                            game_json["teams"]["home"]["abbreviation"])
+        self.title_short = "{0} @ {1}".format(game_json["teams"]["away"]["abbreviation"],
+                                              game_json["teams"]["home"]["abbreviation"])
+        self.title_time = "{0} — {1}".format(game_time_str, self.title_short)
+
         self.highlights = []
         self.fanart = None
         self.thumb = None
