@@ -21,6 +21,13 @@ _url = sys.argv[0]
 _handle = int(sys.argv[1])
 
 
+def parse_bool(bool_str):
+    if bool_str == "true":
+        return True
+    else:
+        return False
+
+
 def get_url(**kwargs):
     """
     Create a URL for calling the plugin recursively from the given set of keyword arguments.
@@ -138,8 +145,11 @@ def list_gameday(date):
     for game in gameday.games:
         # Only add if there are media available
         if game.description is not None:
+            label = game.title
+            if game.scores is not None and parse_bool(xbmcplugin.getSetting(_handle, 'showScores')):
+                label += " — {0}-{1}".format(game.scores[0], game.scores[1])
             # Create a list item with a text label and a thumbnail image.
-            list_item = xbmcgui.ListItem(label=game.title)
+            list_item = xbmcgui.ListItem(label=label)
             # Set graphics (thumbnail, fanart, banner, poster, landscape etc.) for the list item.
             # Here we use the same image for all items for simplicity's sake.
             # In a real-life plugin you need to set each image accordingly.
@@ -150,7 +160,7 @@ def list_gameday(date):
             # For available properties see the following link:
             # https://codedocs.xyz/xbmc/xbmc/group__python__xbmcgui__listitem.html#ga0b71166869bda87ad744942888fb5f14
             # 'mediatype' is needed for a skin to display info for this ListItem correctly.
-            list_item.setInfo('video', {'title': game.title,
+            list_item.setInfo('video', {'title': label,
                                         'plot': game.description,
                                         'plotoutline': game.description_short,
                                         'mediatype': 'video'})
@@ -222,7 +232,10 @@ def list_gamesbyteam(team_id):
         # Only add if there are media available
         if game.description is not None:
             # Create a list item with a text label and a thumbnail image.
-            list_item = xbmcgui.ListItem(label=game.title_time)
+            label = game.title_time
+            if game.scores is not None and parse_bool(xbmcplugin.getSetting(_handle, 'showScores')):
+                label += " — {0}-{1}".format(game.scores[0], game.scores[1])
+            list_item = xbmcgui.ListItem(label=label)
             game_date_str = "{:02d}.{:02d}.{:04d}".format(game.datetime.day, game.datetime.month, game.datetime.year)
             # Set graphics (thumbnail, fanart, banner, poster, landscape etc.) for the list item.
             # Here we use the same image for all items for simplicity's sake.
@@ -234,7 +247,7 @@ def list_gamesbyteam(team_id):
             # For available properties see the following link:
             # https://codedocs.xyz/xbmc/xbmc/group__python__xbmcgui__listitem.html#ga0b71166869bda87ad744942888fb5f14
             # 'mediatype' is needed for a skin to display info for this ListItem correctly.
-            list_item.setInfo('video', {'title': game.title_time,
+            list_item.setInfo('video', {'title': label,
                                         'plot': game.description,
                                         'date': game_date_str,
                                         'plotoutline': game.description_short,

@@ -23,3 +23,7 @@ msgstr ""
 msgctxt "#30002"
 msgid "Days to go back for last games"
 msgstr ""
+
+msgctxt "#30003"
+msgid "Show scores"
+msgstr ""
