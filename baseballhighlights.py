@@ -102,7 +102,7 @@ class Highlight:
 
 
 class Game:
-    def __init__(self, gameid):
+    def __init__(self, game_desc):
         # members:
         # - gameid
         # - datetime
@@ -114,45 +114,56 @@ class Game:
         # - description
         # - description_short
         # - highlights
-        self.gameId = gameid
+        self.gameId = None
 
-        game_query_url = "https://statsapi.mlb.com/api/v1/game/{0}/feed/live".format(gameid)
-        response = urllib.urlopen(game_query_url)
-        data = json.loads(response.read())
-        game_json = data["gameData"]
+        self.datetime = None
+        self.title = None
+        self.title_short = None
+        self.title_time = None
 
-        try:
-            self.datetime = dateutil.parser.parse(game_json["datetime"]["dateTime"])
-            game_tz_offset = game_json["venue"]["timeZone"]["offset"]
-            game_tz_name = game_json["venue"]["timeZone"]["tz"]
-            tz = dateutil.tz.tzoffset(game_tz_name, game_tz_offset * 60)
-            self.datetime.replace(tzinfo=tz)
-            game_time_str = self.datetime.astimezone(dateutil.tz.tzlocal()).strftime("%Y-%m-%d %H:%M")
-        except KeyError:
-            self.datetime = None
-            game_time_str = ""
-
-        team_names = ["{0} ({1})".format(game_json["teams"][ha]["name"], game_json["teams"][ha]["abbreviation"])
-                      for ha in ("away", "home")]
-        self.title = "{0} @ {1}".format(team_names[0], team_names[1])
-        self.title_short = "{0} @ {1}".format(game_json["teams"]["away"]["abbreviation"],
-                                              game_json["teams"]["home"]["abbreviation"])
-        self.title_time = "{0} — {1}".format(game_time_str, self.title_short)
-
-        self.highlights = []
         self.fanart = None
         self.thumb = None
         self.icon = None
         self.description = None
         self.description_short = None
 
-    def get_content(self):
-        images_query_url = "https://statsapi.mlb.com/api/v1/game/{0}/content".format(self.gameId)
-        response = urllib.urlopen(images_query_url)
-        data = json.loads(response.read())
+        self.highlights = []
+        self.scores = None
+
+        game_json = None
+        if type(game_desc) == str or type(game_desc) == int:
+            self.gameId = game_desc
+            game_query_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gamePk={0}&hydrate=game(content(all)),linescore,team".format(game_desc)
+            response = urllib.urlopen(game_query_url)
+            data = json.loads(response.read())
+            try:
+                game_json = data["dates"][0]["games"][0]
+            except KeyError:
+                pass
+        elif type(game_desc) == dict:
+            try:
+                self.gameId = game_desc["gamePk"]
+                game_json = game_desc
+            except KeyError:
+                pass
+        if game_json == None:
+            return
 
         try:
-            recap_json = data["editorial"]["recap"]["mlb"]
+            self.datetime = dateutil.parser.parse(game_json["gameDate"])
+            game_time_str = self.datetime.astimezone(dateutil.tz.tzlocal()).strftime("%Y-%m-%d %H:%M")
+        except KeyError:
+            game_time_str = ""
+
+        team_names = ["{0} ({1})".format(game_json["teams"][ha]["team"]["name"],
+                                         game_json["teams"][ha]["team"]["abbreviation"]) for ha in ("away", "home")]
+        self.title = "{0} @ {1}".format(team_names[0], team_names[1])
+        self.title_short = "{0} @ {1}".format(game_json["teams"]["away"]["team"]["abbreviation"],
+                                              game_json["teams"]["home"]["team"]["abbreviation"])
+        self.title_time = "{0} — {1}".format(game_time_str, self.title_short)
+
+        try:
+            recap_json = game_json["content"]["editorial"]["recap"]["mlb"]
             self.fanart = get_image_url(recap_json, FANART_SIZE)
             self.thumb = get_image_url(recap_json, THUMB_SIZE)
             self.icon = get_image_url(recap_json, ICON_SIZE)
@@ -160,6 +171,13 @@ class Game:
             self.description_short = recap_json["headline"]
         except KeyError:
             pass
+
+        try:
+            self.scores = (int(game_json["linescore"]["teams"]["away"]["runs"]),
+                           int(game_json["linescore"]["teams"]["home"]["runs"]))
+        except KeyError:
+            pass
+
 
     def get_highlights(self):
         highlights_query_url = "https://statsapi.mlb.com/api/v1/game/{0}/content".format(self.gameId)
@@ -203,7 +221,7 @@ class GameDay:
     def __init__(self, date):
         self.date = date
 
-        query_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate={0}&endDate={0}&gameType=R".format(
+        query_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate={0}&endDate={0}&gameType=R&hydrate=game(content(all)),linescore,team".format(
             self.date)
         response = urllib.urlopen(query_url)
         data = json.loads(response.read())
@@ -214,7 +232,7 @@ class GameDay:
             games_json = None
 
         if games_json is not None:
-            self.games = [Game(game["gamePk"]) for game in games_json]
+            self.games = [Game(game) for game in games_json]
         else:
             self.games = []
 
@@ -266,7 +284,7 @@ def get_teams():
 
 class GamesByTeam:
     def __init__(self, date_start, date_end, team_id):
-        query_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate={0}&endDate={1}&teamId={2}&gameType=R".format(
+        query_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate={0}&endDate={1}&teamId={2}&gameType=R&hydrate=game(content(all)),linescore,team".format(
             date_start, date_end, team_id)
         response = urllib.urlopen(query_url)
         data = json.loads(response.read())
@@ -285,4 +303,4 @@ class GamesByTeam:
 
             if games_json is not None:
                 for game_json in games_json:
-                    self.games.append(Game(game_json["gamePk"]))
+                    self.games.append(Game(game_json))

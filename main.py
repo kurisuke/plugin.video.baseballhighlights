@@ -136,7 +136,6 @@ def list_gameday(date):
     gameday = get_gameday(date)
     # Iterate through categories
     for game in gameday.games:
-        game.get_content()
         # Only add if there are media available
         if game.description is not None:
             # Create a list item with a text label and a thumbnail image.
@@ -220,7 +219,6 @@ def list_gamesbyteam(team_id):
     gamesbyteam = get_gamesbyteam(team_id, int(xbmcplugin.getSetting(_handle, 'daysBack')))
     # Iterate through categories
     for game in gamesbyteam.games:
-        game.get_content()
         # Only add if there are media available
         if game.description is not None:
             # Create a list item with a text label and a thumbnail image.
@@ -256,7 +254,6 @@ def list_gamesbyteam(team_id):
 
 def get_highlights(game_id):
     g = baseballhighlights.Game(game_id)
-    g.get_content()
     g.get_highlights()
     return g
 
